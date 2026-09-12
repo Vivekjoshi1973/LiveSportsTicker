@@ -6,6 +6,13 @@ const sportscoreClient = axios.create({ baseURL: isDev ? '/sportscore' : 'https:
 const sofascoreClient = axios.create({ baseURL: isDev ? '/sofascore/api/v1' : 'https://api.sofascore.com/api/v1', timeout: 15000 });
 const thesportsdbClient = axios.create({ baseURL: isDev ? '/thesportsdb/api/v1/json/3' : 'https://www.thesportsdb.com/api/v1/json/3', timeout: 15000 });
 
+[sportscoreClient, sofascoreClient, thesportsdbClient].forEach((client) => {
+  client.interceptors.response.use(
+    (response) => response.data,
+    (error) => Promise.reject(error)
+  );
+});
+
 const getData = (resp) => resp?.data || resp;
 
 const cleanSlug = (slug) => {
@@ -97,7 +104,7 @@ export const getLiveMatches = async (sport) => {
   if (sport === 'kabaddi') return { matches: [] };
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { matches: [] };
-  return await sportscoreClient.get('/api/widget/matches/', { params: { sport: apiSport, limit: 30 } });
+  return getData(await sportscoreClient.get('/api/widget/matches/', { params: { sport: apiSport, limit: 30 } }));
 };
 
 const getAllSportsMatches = async () => {
