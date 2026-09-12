@@ -1,28 +1,20 @@
 import axios from 'axios';
 
-const DEV_URLS = {
-  sportscore: '/sportscore',
-  sofascore: '/sofascore/api/v1',
-  thesportsdb: '/thesportsdb/api/v1/json/3',
-};
+const isDev = import.meta.env.DEV;
 
-const proxy = async (api, path, params = {}) => {
-  try {
-    const isDev = import.meta.env.DEV;
-    let url, reqParams;
-    if (isDev) {
-      url = `${DEV_URLS[api]}/${path}`;
-      reqParams = params;
-    } else {
-      url = '/api/proxy';
-      reqParams = { api, path, ...params };
-    }
-    const resp = await axios.get(url, { params: reqParams, timeout: 15000 });
-    return resp.data;
-  } catch (err) {
-    throw new Error(err.response?.data?.error || err.message || 'API request failed');
-  }
-};
+const corsProxy = 'https://corsproxy.io/?url=';
+
+const directFetch = (url, params = {}) => axios.get(url, { params, timeout: 15000 });
+
+const proxyFetch = (url, params = {}) => axios.get(`${corsProxy}${encodeURIComponent(url)}`, { params, timeout: 15000 });
+
+const fetch = (url, params = {}) => isDev ? directFetch(url, params) : proxyFetch(url, params);
+
+const sportscore = (path, params = {}) => fetch(`https://sportscore.com/${path}`, params);
+const sofascore = (path, params = {}) => fetch(`https://api.sofascore.com/api/v1/${path}`, params);
+const thesportsdb = (path, params = {}) => fetch(`https://www.thesportsdb.com/api/v1/json/3/${path}`, params);
+
+const getData = (resp) => resp?.data || resp;
 
 const cleanSlug = (slug) => {
   let s = slug;
@@ -113,7 +105,8 @@ export const getLiveMatches = async (sport) => {
   if (sport === 'kabaddi') return { matches: [] };
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { matches: [] };
-  return await proxy('sportscore', 'api/widget/matches/', { sport: apiSport, limit: 30 });
+  const data = getData(await sportscore('api/widget/matches/', { sport: apiSport, limit: 30 }));
+  return data;
 };
 
 const getAllSportsMatches = async () => {
@@ -130,11 +123,13 @@ const getAllSportsMatches = async () => {
 const getCricketMatches = async () => {
   try {
     const [sportscoreResp, sofascoreResp] = await Promise.all([
-      proxy('sportscore', 'api/widget/matches/', { sport: 'cricket', limit: 30 }).catch(() => ({ matches: [] })),
-      proxy('sofascore', 'sport/cricket/events/live').catch(() => ({ events: [] })),
+      sportscore('api/widget/matches/', { sport: 'cricket', limit: 30 }).catch(() => ({ data: { matches: [] } })),
+      sofascore('sport/cricket/events/live').catch(() => ({ data: { events: [] } })),
     ]);
-    const sportscoreMatches = (sportscoreResp?.matches || []).map(formatCricketFromSportScore);
-    const sofascoreEvents = sofascoreResp?.events || [];
+    const scData = getData(sportscoreResp);
+    const sfData = getData(sofascoreResp);
+    const sportscoreMatches = (scData?.matches || []).map(formatCricketFromSportScore);
+    const sofascoreEvents = sfData?.events || [];
     const enriched = sportscoreMatches.map((scMatch) => {
       const sofaMatch = sofascoreEvents.find((e) => matchTeams(scMatch._slug, e));
       if (sofaMatch) {
@@ -156,7 +151,7 @@ const getCricketMatches = async () => {
 
 const getBadmintonMatches = async () => {
   try {
-    const resp = await proxy('thesportsdb', 'eventsday.php', { d: new Date().toISOString().split('T')[0], s: 'Badminton' });
+    const resp = getData(await thesportsdb('eventsday.php', { d: new Date().toISOString().split('T')[0], s: 'Badminton' }));
     const events = resp?.events || [];
     return { matches: events.map((e) => formatFromTheSportsDB(e, 'badminton')) };
   } catch (error) {
@@ -166,7 +161,7 @@ const getBadmintonMatches = async () => {
 
 const getHockeyMatches = async () => {
   try {
-    const resp = await proxy('thesportsdb', 'livescore.php', { s: 'Ice Hockey' });
+    const resp = getData(await thesportsdb('livescore.php', { s: 'Ice Hockey' }));
     const events = resp?.livescore || [];
     return { matches: events.map((e) => formatFromTheSportsDB(e, 'hockey')) };
   } catch (error) {
@@ -181,8 +176,8 @@ export const getMatchDetail = async (sport, slug) => {
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return null;
   try {
-    const response = await proxy('sportscore', 'api/widget/match/', { sport: apiSport, slug: clean });
-    return response?.match || response;
+    const data = getData(await sportscore('api/widget/match/', { sport: apiSport, slug: clean }));
+    return data?.match || data;
   } catch (e) {
     return null;
   }
@@ -196,8 +191,8 @@ const findSofascoreMatch = async (slug) => {
   ];
   for (const endpoint of endpoints) {
     try {
-      const resp = await proxy('sofascore', endpoint);
-      const events = resp?.events || [];
+      const data = getData(await sofascore(endpoint));
+      const events = data?.events || [];
       let match = events.find((e) => e.slug === slug);
       if (!match) match = events.find((e) => matchTeams(slug, e));
       if (match) return match;
@@ -211,8 +206,8 @@ const getCricketMatchDetail = async (slug) => {
   const sofascoreMatch = await findSofascoreMatch(s);
   if (sofascoreMatch) return formatCricketFromSofascore(sofascoreMatch);
   try {
-    const resp = await proxy('sportscore', 'api/widget/match/', { sport: 'cricket', slug: s });
-    const match = resp?.match || resp;
+    const data = getData(await sportscore('api/widget/match/', { sport: 'cricket', slug: s }));
+    const match = data?.match || data;
     if (match && match.home) {
       return {
         home: match.home, away: match.away, home_score: match.home_score ?? '-', away_score: match.away_score ?? '-',
@@ -228,8 +223,8 @@ const getCricketMatchDetail = async (slug) => {
 
 const getTheSportsDBMatchDetail = async (sport, eventId) => {
   try {
-    const resp = await proxy('thesportsdb', 'lookupevent.php', { i: eventId });
-    const event = resp?.events?.[0];
+    const data = getData(await thesportsdb('lookupevent.php', { i: eventId }));
+    const event = data?.events?.[0];
     if (!event) return null;
     return {
       home: event.strHomeTeam || 'Team 1', away: event.strAwayTeam || 'Team 2',
@@ -249,7 +244,7 @@ const getTheSportsDBMatchDetail = async (sport, eventId) => {
 export const getStandings = async (sport, slug) => {
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { data: [] };
-  return await proxy('sportscore', 'api/widget/standings/', { sport: apiSport, slug });
+  return getData(await sportscore('api/widget/standings/', { sport: apiSport, slug }));
 };
 
 export const searchTeams = async (sport, query) => {
@@ -257,8 +252,8 @@ export const searchTeams = async (sport, query) => {
 
   if (sport === 'cricket') {
     try {
-      const resp = await proxy('sportscore', 'api/widget/matches/', { sport: 'cricket', limit: 30 });
-      const matches = (resp?.matches || []).map(formatCricketFromSportScore).filter((m) =>
+      const data = getData(await sportscore('api/widget/matches/', { sport: 'cricket', limit: 30 }));
+      const matches = (data?.matches || []).map(formatCricketFromSportScore).filter((m) =>
         m.home?.toLowerCase().includes(q) || m.away?.toLowerCase().includes(q)
       );
       return { matches };
@@ -281,11 +276,11 @@ export const searchTeams = async (sport, query) => {
 
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { matches: [] };
-  const resp = await proxy('sportscore', 'api/widget/matches/', { sport: apiSport, limit: 30 });
-  if (resp?.matches) {
-    return { ...resp, matches: resp.matches.filter((m) =>
+  const data = getData(await sportscore('api/widget/matches/', { sport: apiSport, limit: 30 }));
+  if (data?.matches) {
+    return { ...data, matches: data.matches.filter((m) =>
       m.home?.toLowerCase().includes(q) || m.away?.toLowerCase().includes(q)
     )};
   }
-  return resp;
+  return data;
 };
