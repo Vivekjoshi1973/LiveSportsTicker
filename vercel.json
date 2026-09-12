@@ -1,0 +1,26 @@
+{
+  "rewrites": [
+    {
+      "source": "/sportscore/:path*",
+      "destination": "https://sportscore.com/:path*"
+    },
+    {
+      "source": "/sofascore/:path*",
+      "destination": "https://api.sofascore.com/:path*"
+    },
+    {
+      "source": "/thesportsdb/:path*",
+      "destination": "https://www.thesportsdb.com/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
+  ]
+}
