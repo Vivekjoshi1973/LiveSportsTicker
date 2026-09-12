@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const sportsApi = axios.create({
-  baseURL: '/sportscore',
+  baseURL: '/api/sportscore',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -14,7 +14,7 @@ sportsApi.interceptors.response.use(
 );
 
 const sofascoreApi = axios.create({
-  baseURL: '/sofascore/api/v1',
+  baseURL: '/api/sofascore',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -27,7 +27,7 @@ sofascoreApi.interceptors.response.use(
 );
 
 const thesportsdbApi = axios.create({
-  baseURL: '/thesportsdb/api/v1/json/3',
+  baseURL: '/api/thesportsdb',
   headers: { 'Content-Type': 'application/json' },
 });
 

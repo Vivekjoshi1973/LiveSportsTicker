@@ -5,20 +5,20 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/sportscore': {
+      '/api/sportscore': {
         target: 'https://sportscore.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/sportscore/, ''),
+        rewrite: (path) => path.replace(/^\/api\/sportscore/, ''),
       },
-      '/sofascore': {
-        target: 'https://api.sofascore.com',
+      '/api/sofascore': {
+        target: 'https://api.sofascore.com/api/v1',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/sofascore/, ''),
+        rewrite: (path) => path.replace(/^\/api\/sofascore/, ''),
       },
-      '/thesportsdb': {
-        target: 'https://www.thesportsdb.com',
+      '/api/thesportsdb': {
+        target: 'https://www.thesportsdb.com/api/v1/json/3',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/thesportsdb/, ''),
+        rewrite: (path) => path.replace(/^\/api\/thesportsdb/, ''),
       },
     },
   },
