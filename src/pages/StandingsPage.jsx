@@ -7,11 +7,10 @@ import Skeleton from '../components/Skeleton';
 const LEAGUES = [
   { sport: 'football', slug: 'english-premier-league', label: 'EPL' },
   { sport: 'football', slug: 'spanish-la-liga', label: 'La Liga' },
-  { sport: 'football', slug: 'german-bundesliga', label: 'Bundesliga' },
+  { sport: 'football', slug: 'bundesliga', label: 'Bundesliga' },
   { sport: 'football', slug: 'italian-serie-a', label: 'Serie A' },
   { sport: 'football', slug: 'french-ligue-1', label: 'Ligue 1' },
   { sport: 'football', slug: 'uefa-champions-league', label: 'UCL' },
-  { sport: 'basketball', slug: 'nba', label: 'NBA' },
 ];
 
 const StandingsPage = () => {
