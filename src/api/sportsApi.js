@@ -2,17 +2,9 @@ import axios from 'axios';
 
 const isDev = import.meta.env.DEV;
 
-const corsProxy = 'https://corsproxy.io/?url=';
-
-const directFetch = (url, params = {}) => axios.get(url, { params, timeout: 15000 });
-
-const proxyFetch = (url, params = {}) => axios.get(`${corsProxy}${encodeURIComponent(url)}`, { params, timeout: 15000 });
-
-const fetch = (url, params = {}) => isDev ? directFetch(url, params) : proxyFetch(url, params);
-
-const sportscore = (path, params = {}) => fetch(`https://sportscore.com/${path}`, params);
-const sofascore = (path, params = {}) => fetch(`https://api.sofascore.com/api/v1/${path}`, params);
-const thesportsdb = (path, params = {}) => fetch(`https://www.thesportsdb.com/api/v1/json/3/${path}`, params);
+const sportscoreClient = axios.create({ baseURL: isDev ? '/sportscore' : 'https://sportscore.com', timeout: 15000 });
+const sofascoreClient = axios.create({ baseURL: isDev ? '/sofascore/api/v1' : 'https://api.sofascore.com/api/v1', timeout: 15000 });
+const thesportsdbClient = axios.create({ baseURL: isDev ? '/thesportsdb/api/v1/json/3' : 'https://www.thesportsdb.com/api/v1/json/3', timeout: 15000 });
 
 const getData = (resp) => resp?.data || resp;
 
@@ -105,8 +97,7 @@ export const getLiveMatches = async (sport) => {
   if (sport === 'kabaddi') return { matches: [] };
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { matches: [] };
-  const data = getData(await sportscore('api/widget/matches/', { sport: apiSport, limit: 30 }));
-  return data;
+  return await sportscoreClient.get('/api/widget/matches/', { params: { sport: apiSport, limit: 30 } });
 };
 
 const getAllSportsMatches = async () => {
@@ -123,8 +114,8 @@ const getAllSportsMatches = async () => {
 const getCricketMatches = async () => {
   try {
     const [sportscoreResp, sofascoreResp] = await Promise.all([
-      sportscore('api/widget/matches/', { sport: 'cricket', limit: 30 }).catch(() => ({ data: { matches: [] } })),
-      sofascore('sport/cricket/events/live').catch(() => ({ data: { events: [] } })),
+      sportscoreClient.get('/api/widget/matches/', { params: { sport: 'cricket', limit: 30 } }).catch(() => ({ data: { matches: [] } })),
+      sofascoreClient.get('/sport/cricket/events/live').catch(() => ({ data: { events: [] } })),
     ]);
     const scData = getData(sportscoreResp);
     const sfData = getData(sofascoreResp);
@@ -151,8 +142,9 @@ const getCricketMatches = async () => {
 
 const getBadmintonMatches = async () => {
   try {
-    const resp = getData(await thesportsdb('eventsday.php', { d: new Date().toISOString().split('T')[0], s: 'Badminton' }));
-    const events = resp?.events || [];
+    const resp = await thesportsdbClient.get('/eventsday.php', { params: { d: new Date().toISOString().split('T')[0], s: 'Badminton' } });
+    const data = getData(resp);
+    const events = data?.events || [];
     return { matches: events.map((e) => formatFromTheSportsDB(e, 'badminton')) };
   } catch (error) {
     return { matches: [] };
@@ -161,8 +153,9 @@ const getBadmintonMatches = async () => {
 
 const getHockeyMatches = async () => {
   try {
-    const resp = getData(await thesportsdb('livescore.php', { s: 'Ice Hockey' }));
-    const events = resp?.livescore || [];
+    const resp = await thesportsdbClient.get('/livescore.php', { params: { s: 'Ice Hockey' } });
+    const data = getData(resp);
+    const events = data?.livescore || [];
     return { matches: events.map((e) => formatFromTheSportsDB(e, 'hockey')) };
   } catch (error) {
     return { matches: [] };
@@ -176,7 +169,8 @@ export const getMatchDetail = async (sport, slug) => {
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return null;
   try {
-    const data = getData(await sportscore('api/widget/match/', { sport: apiSport, slug: clean }));
+    const resp = await sportscoreClient.get('/api/widget/match/', { params: { sport: apiSport, slug: clean } });
+    const data = getData(resp);
     return data?.match || data;
   } catch (e) {
     return null;
@@ -185,13 +179,14 @@ export const getMatchDetail = async (sport, slug) => {
 
 const findSofascoreMatch = async (slug) => {
   const endpoints = [
-    'sport/cricket/events/live',
-    'sport/cricket/events/next/0',
-    'sport/cricket/events/last/0',
+    '/sport/cricket/events/live',
+    '/sport/cricket/events/next/0',
+    '/sport/cricket/events/last/0',
   ];
   for (const endpoint of endpoints) {
     try {
-      const data = getData(await sofascore(endpoint));
+      const resp = await sofascoreClient.get(endpoint);
+      const data = getData(resp);
       const events = data?.events || [];
       let match = events.find((e) => e.slug === slug);
       if (!match) match = events.find((e) => matchTeams(slug, e));
@@ -206,7 +201,8 @@ const getCricketMatchDetail = async (slug) => {
   const sofascoreMatch = await findSofascoreMatch(s);
   if (sofascoreMatch) return formatCricketFromSofascore(sofascoreMatch);
   try {
-    const data = getData(await sportscore('api/widget/match/', { sport: 'cricket', slug: s }));
+    const resp = await sportscoreClient.get('/api/widget/match/', { params: { sport: 'cricket', slug: s } });
+    const data = getData(resp);
     const match = data?.match || data;
     if (match && match.home) {
       return {
@@ -223,7 +219,8 @@ const getCricketMatchDetail = async (slug) => {
 
 const getTheSportsDBMatchDetail = async (sport, eventId) => {
   try {
-    const data = getData(await thesportsdb('lookupevent.php', { i: eventId }));
+    const resp = await thesportsdbClient.get('/lookupevent.php', { params: { i: eventId } });
+    const data = getData(resp);
     const event = data?.events?.[0];
     if (!event) return null;
     return {
@@ -244,7 +241,8 @@ const getTheSportsDBMatchDetail = async (sport, eventId) => {
 export const getStandings = async (sport, slug) => {
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { data: [] };
-  return getData(await sportscore('api/widget/standings/', { sport: apiSport, slug }));
+  const resp = await sportscoreClient.get('/api/widget/standings/', { params: { sport: apiSport, slug } });
+  return getData(resp);
 };
 
 export const searchTeams = async (sport, query) => {
@@ -252,7 +250,8 @@ export const searchTeams = async (sport, query) => {
 
   if (sport === 'cricket') {
     try {
-      const data = getData(await sportscore('api/widget/matches/', { sport: 'cricket', limit: 30 }));
+      const resp = await sportscoreClient.get('/api/widget/matches/', { params: { sport: 'cricket', limit: 30 } });
+      const data = getData(resp);
       const matches = (data?.matches || []).map(formatCricketFromSportScore).filter((m) =>
         m.home?.toLowerCase().includes(q) || m.away?.toLowerCase().includes(q)
       );
@@ -276,7 +275,8 @@ export const searchTeams = async (sport, query) => {
 
   const apiSport = { football: 'football', tennis: 'tennis', basketball: 'basketball' }[sport];
   if (!apiSport) return { matches: [] };
-  const data = getData(await sportscore('api/widget/matches/', { sport: apiSport, limit: 30 }));
+  const resp = await sportscoreClient.get('/api/widget/matches/', { params: { sport: apiSport, limit: 30 } });
+  const data = getData(resp);
   if (data?.matches) {
     return { ...data, matches: data.matches.filter((m) =>
       m.home?.toLowerCase().includes(q) || m.away?.toLowerCase().includes(q)
