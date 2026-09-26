@@ -4,6 +4,7 @@ import { Search, ArrowLeft } from 'lucide-react';
 import { searchTeams } from '../api/sportsApi';
 import LiveScoreCard from '../components/LiveScoreCard';
 import Skeleton from '../components/Skeleton';
+import NLQueryBar from '../components/NLQueryBar';
 
 const SPORTS = ['cricket', 'football', 'tennis', 'basketball', 'badminton', 'hockey'];
 
@@ -79,15 +80,20 @@ const SearchPage = () => {
           <p className="empty-sub">Try a different team name</p>
         </div>
       ) : (
-        <div className="matches-grid" aria-live="polite">
-          {results.map((match, index) => (
-            <LiveScoreCard
-              key={match.url || match._slug || index}
-              match={match}
-              sport={match._sport || 'cricket'}
-            />
-          ))}
-        </div>
+        <>
+          <div className="matches-grid" aria-live="polite">
+            {results.map((match, index) => (
+              <LiveScoreCard
+                key={match.url || match._slug || index}
+                match={match}
+                sport={match._sport || 'cricket'}
+              />
+            ))}
+          </div>
+          <div className="section-mt">
+            <NLQueryBar sportsData={results} />
+          </div>
+        </>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { getMatchDetail } from '../api/sportsApi';
 import { useFavorites } from '../context/FavoritesContext';
 import { formatMatchStatus, getScoreColor } from '../utils/helpers';
 import Skeleton from '../components/Skeleton';
+import AISummary from '../components/AISummary';
 
 const CricketScorecard = ({ match }) => {
   if (!match?._cricket) return null;
@@ -290,6 +291,8 @@ const MatchDetailPage = () => {
       {sport === 'tennis' && <TennisScorecard match={match} />}
       {sport === 'basketball' && <BasketballScorecard match={match} />}
       {sport === 'football' && <><FootballStats stats={match.stats} /><FootballLineups lineups={match.lineups} homeTeam={homeTeam} awayTeam={awayTeam} /><FootballTimeline incidents={match.incidents} /></>}
+
+      <AISummary match={match} />
 
       <div className="attribution">
         Powered by {match._source === 'sofascore' ? <a href="https://www.sofascore.com/" target="_blank" rel="noopener noreferrer">Sofascore</a> : <a href="https://sportscore.com/" target="_blank" rel="noopener noreferrer">SportScore</a>}

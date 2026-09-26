@@ -4,6 +4,7 @@ import SportSelector from '../components/SportSelector';
 import LiveScoreCard from '../components/LiveScoreCard';
 import Sidebar from '../components/Sidebar';
 import Skeleton from '../components/Skeleton';
+import LiveCommentary from '../components/LiveCommentary';
 import useLiveScores from '../hooks/useLiveScores';
 
 const HomePage = () => {
@@ -96,11 +97,16 @@ const HomePage = () => {
                   <span className="section-title">Live Now</span>
                   <span className="section-link">{liveMatches.length} matches</span>
                 </div>
-                <div className="matches-grid" aria-live="polite">
-                  {liveMatches.map((match, index) => (
-                    <LiveScoreCard key={match.url || match._slug || index} match={match} sport={match._sport || activeSport} />
-                  ))}
-                </div>
+<div className="matches-grid" aria-live="polite">
+                   {liveMatches.map((match, index) => (
+                     <LiveScoreCard key={match.url || match._slug || index} match={match} sport={match._sport || activeSport} />
+                   ))}
+                 </div>
+                 {liveMatches.length > 0 && (
+                   <div className="section-mt">
+                     <LiveCommentary match={liveMatches[0]} />
+                   </div>
+                 )}
               </section>
 
               {!isAllSports && upcomingMatches.length > 0 && (
