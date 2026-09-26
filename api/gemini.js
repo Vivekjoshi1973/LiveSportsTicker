@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
@@ -28,12 +28,13 @@ export default async function handler(req, res) {
       },
     }, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 30000,
+      timeout: 10000,
     });
 
     const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
     res.status(200).json({ text });
   } catch (err) {
-    res.status(err.response?.status || 500).json({ error: err.message || 'Gemini API error' });
+    const errorMsg = err.response?.data?.error?.message || err.message || 'Gemini API error';
+    res.status(err.response?.status || 500).json({ error: errorMsg });
   }
 }
